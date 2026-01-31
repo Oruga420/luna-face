@@ -164,7 +164,9 @@ html[data-theme="unicorn"] body {
 .lt_label { font-size: 13px; }
 
 /* Keep existing HUD/controls readable above unicorn layer */
-#face, #controls, #hud { position: relative; z-index: 10; }
+#face { position: relative; z-index: 10; }
+#controls { z-index: 20; }
+#hud { z-index: 20; }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
