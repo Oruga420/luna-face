@@ -79,6 +79,9 @@ let sleep = { breathPhase: 0, droolNextAt: 0, drool: null };
 let drift = { x: 0, y: 0 };
 let look = { x: 0, y: 0, tx: 0, ty: 0 }; // x/y current, tx/ty target
 
+// Mouse follow
+let mouse = { x: 0.5, y: 0.5, active: false };
+
 // Camera / vision
 let cam = {
   enabled: false,
@@ -636,6 +639,15 @@ function tick() {
   // Vision
   runVisionFrame();
 
+  // Mouse follow (when camera isn't actively steering)
+  if (mouse.active && (!cam.enabled || t - cam.lastFaceAt > 900)) {
+    // map [0..1] to [-1..1]
+    const mx = (mouse.x - 0.5) * 2;
+    const my = (mouse.y - 0.5) * 2;
+    look.tx = clamp(mx, -1, 1);
+    look.ty = clamp(my, -1, 1);
+  }
+
   // Smooth look steering
   look.x = lerp(look.x, look.tx, 0.08);
   look.y = lerp(look.y, look.ty, 0.08);
@@ -746,6 +758,14 @@ function onKey(e) {
 
 window.addEventListener('resize', resize);
 window.addEventListener('keydown', onKey);
+
+// Mouse follow (desktop)
+window.addEventListener('pointermove', (e) => {
+  mouse.active = true;
+  mouse.x = clamp(e.clientX / window.innerWidth, 0, 1);
+  mouse.y = clamp(e.clientY / window.innerHeight, 0, 1);
+});
+
 canvas.addEventListener('click', toggleTheme);
 
 // Mobile/touch controls
