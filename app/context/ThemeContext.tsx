@@ -25,6 +25,16 @@ export function ThemeProvider(props: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = normalizeTheme(localStorage.getItem(STORAGE_KEY));
     setThemeState(saved);
+
+    // Allow non-React code (public/face.js) to drive theme changes.
+    const onExternal = (e: Event) => {
+      const ce = e as CustomEvent;
+      const next = normalizeTheme(ce.detail);
+      setThemeState(next);
+    };
+
+    window.addEventListener("lunaface-theme", onExternal as EventListener);
+    return () => window.removeEventListener("lunaface-theme", onExternal as EventListener);
   }, []);
 
   useEffect(() => {

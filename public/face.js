@@ -195,6 +195,12 @@ function toggleTheme() {
   const next = cur === 'dark' ? 'light' : cur === 'light' ? 'unicorn' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   try { localStorage.setItem('arena-theme', next); } catch (_) {}
+
+  // Notify React theme system (UnicornBackground) so it mounts/unmounts correctly.
+  try {
+    window.dispatchEvent(new CustomEvent('lunaface-theme', { detail: next }));
+  } catch (_) {}
+
   syncThemeFromDom();
 }
 

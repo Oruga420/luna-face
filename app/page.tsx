@@ -20,7 +20,7 @@ export default function Page() {
 
       <div id="hud">
         <div>
-          <strong>LunaFace</strong> (tap Theme, or tap canvas to toggle)
+          <strong>LunaFace</strong> (tap Theme to change theme, tap face to make her react)
         </div>
         <div className="keys">
           Keys: 1 minimal | 2 kawaii | i idle | b blink | y sleepy | z sleep | s speaking | u surprised | a angry | h happy | l lol | p play voice | c camera
