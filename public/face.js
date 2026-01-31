@@ -68,7 +68,75 @@ let state = 'idle';
 let style = {
   eye: 'neutral', // neutral | tareme | tsurime
   ahoge: false,
+  preset: 'none',
+  eyeFx: 'none', // none | sanpaku | guruguru | shiitake | heartme | dead
+  mouthFx: 'none', // none | yaeba | sameba | muu | smug
+  fx: {
+    heavyBlush: false,
+    tears: false,
+    hanaji: false,
+    kagegao: false,
+    bakagao: false,
+  },
 };
+
+const PRESETS = [
+  'none',
+  'sanpaku',
+  'guruguru',
+  'shiitake',
+  'heartme',
+  'yaeba',
+  'sameba',
+  'muu',
+  'kagegao',
+  'mesugaki',
+  'hanaji',
+  'bakagao',
+  'heavyblush',
+  'streamtears',
+  'deadeyes',
+];
+
+function applyPreset(name) {
+  style.preset = name;
+  style.eyeFx = 'none';
+  style.mouthFx = 'none';
+  style.fx = { heavyBlush: false, tears: false, hanaji: false, kagegao: false, bakagao: false };
+
+  // keep the eye vibe you set manually unless the preset implies one
+  if (name === 'none') return;
+
+  if (name === 'sanpaku') style.eyeFx = 'sanpaku';
+  if (name === 'guruguru') style.eyeFx = 'guruguru';
+  if (name === 'shiitake') style.eyeFx = 'shiitake';
+  if (name === 'heartme') style.eyeFx = 'heartme';
+  if (name === 'deadeyes') style.eyeFx = 'dead';
+
+  if (name === 'yaeba') style.mouthFx = 'yaeba';
+  if (name === 'sameba') style.mouthFx = 'sameba';
+  if (name === 'muu') style.mouthFx = 'muu';
+
+  if (name === 'kagegao') style.fx.kagegao = true;
+  if (name === 'hanaji') style.fx.hanaji = true;
+  if (name === 'heavyblush') style.fx.heavyBlush = true;
+  if (name === 'streamtears') style.fx.tears = true;
+
+  if (name === 'mesugaki') {
+    style.eye = 'tsurime';
+    style.mouthFx = 'smug';
+  }
+
+  if (name === 'bakagao') {
+    style.fx.bakagao = true;
+  }
+}
+
+let presetIdx = 0;
+function cyclePreset() {
+  presetIdx = (presetIdx + 1) % PRESETS.length;
+  applyPreset(PRESETS[presetIdx]);
+}
 
 // Random mood bursts
 let mood = {
@@ -323,8 +391,52 @@ function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness
     ctx.restore();
   }
 
-  drawEyeRect(leftX, baseY, -1);
-  drawEyeRect(rightX, baseY, +1);
+  // Special eye FX for minimal
+  if (style.eyeFx === 'guruguru' || style.eyeFx === 'shiitake' || style.eyeFx === 'heartme') {
+    // minimal eyes are blocky, so draw a simple overlay inside the eye boxes.
+    // First draw the base eyes with tareme/tsurime shape.
+    drawEyeRect(leftX, baseY, -1);
+    drawEyeRect(rightX, baseY, +1);
+
+    function eyeOverlay(cxE, cyE) {
+      ctx.save();
+      ctx.translate(cxE, cyE);
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = Math.max(2, r * 0.01);
+      if (style.eyeFx === 'shiitake') {
+        ctx.beginPath();
+        ctx.moveTo(-eyeW * 0.18, 0);
+        ctx.lineTo(eyeW * 0.18, 0);
+        ctx.moveTo(0, -eyeH * 0.18);
+        ctx.lineTo(0, eyeH * 0.18);
+        ctx.stroke();
+      } else if (style.eyeFx === 'heartme') {
+        ctx.fillStyle = 'rgba(255,110,196,0.9)';
+        ctx.beginPath();
+        const s = Math.min(eyeW, eyeH) * 0.12;
+        ctx.moveTo(0, s);
+        ctx.bezierCurveTo(s, -s, s * 2.2, s * 0.6, 0, s * 2.2);
+        ctx.bezierCurveTo(-s * 2.2, s * 0.6, -s, -s, 0, s);
+        ctx.fill();
+      } else if (style.eyeFx === 'guruguru') {
+        ctx.beginPath();
+        let a = 0;
+        for (let i = 0; i < 20; i++) {
+          const rr = (Math.min(eyeW, eyeH) * 0.04) + i * (Math.min(eyeW, eyeH) * 0.012);
+          a += 0.45;
+          ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    eyeOverlay(leftX, baseY);
+    eyeOverlay(rightX, baseY);
+  } else {
+    drawEyeRect(leftX, baseY, -1);
+    drawEyeRect(rightX, baseY, +1);
+  }
 
   // eyebrows
   if (mood.angry || mood.surprised) {
@@ -344,6 +456,16 @@ function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness
     ctx.moveTo(cx + gap - browW / 2 + eyeShiftX, browY + tilt);
     ctx.lineTo(cx + gap + browW / 2 + eyeShiftX, browY - tilt);
     ctx.stroke();
+  }
+
+  // kagegao (shadow on upper face)
+  if (style.fx.kagegao) {
+    const g = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+    g.addColorStop(0, 'rgba(0,0,0,0.75)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.35)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvas.clientWidth, cy + r * 0.15);
   }
 
   // ahoge (アホ毛) - little "idiot hair" strand
@@ -432,12 +554,55 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness,
     ctx.translate(x + eyeShiftX, eyeY);
     ctx.rotate(rot);
 
-    ctx.fillStyle = theme.eye;
+    const dead = style.eyeFx === 'dead';
+
+    // Eye base
+    ctx.fillStyle = dead ? 'rgba(15,15,15,0.9)' : theme.eye;
     ctx.beginPath();
-    ctx.ellipse(0, 0, eyeR, eyeR * (1 - eyelid * 0.85), 0, 0, Math.PI * 2);
+
+    // sanpaku: smaller iris, offset down a bit so white shows
+    const irisScale = style.eyeFx === 'sanpaku' ? 0.78 : 1;
+    const irisY = style.eyeFx === 'sanpaku' ? eyeR * 0.18 : 0;
+
+    ctx.ellipse(0, irisY, eyeR * irisScale, eyeR * (1 - eyelid * 0.85) * irisScale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    if (eyelid < 0.9) {
+    // guruguru / shiitake / heartme overlays
+    if (style.eyeFx === 'guruguru') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let a = 0;
+      for (let i = 0; i < 26; i++) {
+        const rr = eyeR * 0.08 + i * eyeR * 0.03;
+        a += 0.55;
+        ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr + irisY);
+      }
+      ctx.stroke();
+    }
+
+    if (style.eyeFx === 'shiitake') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-eyeR * 0.55, irisY);
+      ctx.lineTo(eyeR * 0.55, irisY);
+      ctx.moveTo(0, -eyeR * 0.55 + irisY);
+      ctx.lineTo(0, eyeR * 0.55 + irisY);
+      ctx.stroke();
+    }
+
+    if (style.eyeFx === 'heartme') {
+      ctx.fillStyle = 'rgba(255,110,196,0.9)';
+      ctx.beginPath();
+      const s = eyeR * 0.35;
+      ctx.moveTo(0, irisY + s * 0.2);
+      ctx.bezierCurveTo(s * 0.9, irisY - s * 0.9, s * 2.0, irisY + s * 0.35, 0, irisY + s * 1.75);
+      ctx.bezierCurveTo(-s * 2.0, irisY + s * 0.35, -s * 0.9, irisY - s * 0.9, 0, irisY + s * 0.2);
+      ctx.fill();
+    }
+
+    if (eyelid < 0.9 && style.eyeFx !== 'dead') {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.beginPath();
       ctx.arc(-eyeR * 0.25, -eyeR * 0.25, eyeR * 0.22, 0, Math.PI * 2);
@@ -483,7 +648,7 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness,
     ctx.stroke();
   }
 
-  const blushAlphaBoost = mood.happy || mood.lol ? 1.45 : 1.0;
+  const blushAlphaBoost = (mood.happy || mood.lol ? 1.45 : 1.0) * (style.fx.heavyBlush ? 2.2 : 1.0);
   const blushFill = theme.blush.replace('0.35', (0.35 * blushAlphaBoost).toFixed(2));
   ctx.fillStyle = blushFill;
   const blushR = r * 0.14;
@@ -512,7 +677,18 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness,
   ctx.lineWidth = 4;
   ctx.lineCap = 'round';
 
-  if (state === 'speaking') {
+  // Muu (pout)
+  if (style.mouthFx === 'muu') {
+    ctx.beginPath();
+    ctx.arc(cx, mouthY + r * 0.01, r * 0.045, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.stroke();
+  } else if (style.mouthFx === 'smug') {
+    // Mesugaki-ish smirk
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.06, mouthY + r * 0.02);
+    ctx.quadraticCurveTo(cx + r * 0.05, mouthY - r * 0.02, cx + r * 0.09, mouthY + r * 0.02);
+    ctx.stroke();
+  } else if (state === 'speaking') {
     ctx.beginPath();
     ctx.ellipse(cx, mouthY, r * 0.07, r * 0.05, 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -537,6 +713,59 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness,
     ctx.beginPath();
     ctx.moveTo(cx - r * 0.06, mouthY);
     ctx.lineTo(cx + r * 0.06, mouthY);
+    ctx.stroke();
+  }
+
+  // Teeth overlays
+  if (style.mouthFx === 'yaeba') {
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.05, mouthY + r * 0.02);
+    ctx.lineTo(cx + r * 0.07, mouthY + r * 0.08);
+    ctx.lineTo(cx + r * 0.03, mouthY + r * 0.05);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if (style.mouthFx === 'sameba') {
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    const toothN = 6;
+    const startX = cx - r * 0.09;
+    const step = (r * 0.18) / toothN;
+    for (let i = 0; i < toothN; i++) {
+      const tx = startX + i * step;
+      ctx.beginPath();
+      ctx.moveTo(tx, mouthY + r * 0.01);
+      ctx.lineTo(tx + step * 0.5, mouthY + r * 0.06);
+      ctx.lineTo(tx + step, mouthY + r * 0.01);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // hanaji (nosebleed)
+  if (style.fx.hanaji) {
+    ctx.strokeStyle = 'rgba(255,60,90,0.85)';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.03, cy + r * 0.05);
+    ctx.lineTo(cx + r * 0.05, cy + r * 0.18);
+    ctx.stroke();
+  }
+
+  // stream tears
+  if (style.fx.tears) {
+    ctx.strokeStyle = 'rgba(120,210,255,0.85)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    const ex = r * 0.42;
+    const ey = -r * 0.02;
+    ctx.beginPath();
+    ctx.moveTo(cx - ex, cy + ey);
+    ctx.lineTo(cx - ex, cy + ey + r * 0.55);
+    ctx.moveTo(cx + ex, cy + ey);
+    ctx.lineTo(cx + ex, cy + ey + r * 0.55);
     ctx.stroke();
   }
 
@@ -835,8 +1064,14 @@ function tick() {
   }
 
   // Eye steering combines drift + camera look
-  const steerX = drift.x + look.x * layout.r * 0.06;
-  const steerY = drift.y + look.y * layout.r * 0.03;
+  let steerX = drift.x + look.x * layout.r * 0.06;
+  let steerY = drift.y + look.y * layout.r * 0.03;
+
+  // Baka-gao: eyes go a bit derpy (slight cross / desync)
+  if (style.fx.bakagao) {
+    steerX += Math.sin(t * 0.004) * layout.r * 0.04;
+    steerY += Math.cos(t * 0.003) * layout.r * 0.02;
+  }
 
   const uiMode = syncThemeFromDom();
   if (uiMode === 'unicorn') {
@@ -880,6 +1115,7 @@ function onKey(e) {
   if (k === 't') style.eye = 'tareme';
   if (k === 'r') style.eye = 'tsurime';
   if (k === 'g') style.ahoge = !style.ahoge;
+  if (k === 'v') cyclePreset();
   if (k === 'p') safePlay(audio.hey);
   if (k === 'c') {
     if (cam.enabled) disableCamera();
@@ -941,6 +1177,7 @@ canvas.addEventListener('click', (e) => {
     if (action === 'tareme') style.eye = 'tareme';
     if (action === 'tsurime') style.eye = 'tsurime';
     if (action === 'ahoge') style.ahoge = !style.ahoge;
+    if (action === 'vibe') cyclePreset();
 
     if (action === 'idle') setState('idle');
     if (action === 'happy') setState('happy');

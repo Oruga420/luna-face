@@ -18,6 +18,7 @@ export default function Page() {
         <button data-action="tareme">Tareme</button>
         <button data-action="tsurime">Tsurime</button>
         <button data-action="ahoge">Ahoge</button>
+        <button data-action="vibe">Vibe</button>
         <button data-action="voice">Voice</button>
       </div>
 
@@ -26,7 +27,7 @@ export default function Page() {
           <strong>LunaFace</strong> (tap Theme to change theme, tap face to make her react)
         </div>
         <div className="keys">
-          Keys: 1 minimal | 2 kawaii | i idle | b blink | y sleepy | z sleep | s speaking | u surprised | a angry | h happy | l lol | t tareme | r tsurime | g ahoge | p play voice | c camera
+          Keys: 1 minimal | 2 kawaii | i idle | b blink | y sleepy | z sleep | s speaking | u surprised | a angry | h happy | l lol | t tareme | r tsurime | g ahoge | v vibe | p play voice | c camera
         </div>
       </div>
 
