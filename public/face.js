@@ -766,7 +766,25 @@ window.addEventListener('pointermove', (e) => {
   mouse.y = clamp(e.clientY / window.innerHeight, 0, 1);
 });
 
-canvas.addEventListener('click', toggleTheme);
+canvas.addEventListener('click', (e) => {
+  // Click interactions: make Luna react.
+  // If you click near the eyes: surprised. Near the mouth: angry. Otherwise: happy.
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+
+  // simple regions
+  const nearEyes = y > 0.28 && y < 0.52;
+  const nearMouth = y > 0.58 && y < 0.78;
+
+  if (nearMouth) {
+    setState('angry');
+  } else if (nearEyes) {
+    setState('surprised');
+  } else {
+    setState('happy');
+  }
+});
 
 // Mobile/touch controls
 (function bindControls() {
