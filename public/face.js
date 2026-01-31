@@ -712,6 +712,36 @@ window.addEventListener('resize', resize);
 window.addEventListener('keydown', onKey);
 canvas.addEventListener('click', toggleTheme);
 
+// Mobile/touch controls
+(function bindControls() {
+  const root = document.getElementById('controls');
+  if (!root) return;
+
+  root.addEventListener('click', async (e) => {
+    const t = e.target;
+    if (!t || !(t instanceof HTMLElement)) return;
+    const action = t.getAttribute('data-action');
+    if (!action) return;
+
+    // Any user interaction unlocks audio on mobile
+    try { await audio.hey.play().then(() => { audio.hey.pause(); audio.hey.currentTime = 0; }); } catch (_) {}
+
+    if (action === 'theme') toggleTheme();
+    if (action === 'camera') {
+      if (cam.enabled) disableCamera();
+      else enableCamera();
+    }
+    if (action === 'voice') safePlay(audio.hey);
+
+    if (action === 'idle') setState('idle');
+    if (action === 'happy') setState('happy');
+    if (action === 'lol') setState('lol');
+    if (action === 'surprised') setState('surprised');
+    if (action === 'angry') setState('angry');
+    if (action === 'sleep') { setState('sleeping'); safePlay(audio.brotaSleep); }
+  });
+})();
+
 resize();
 scheduleBlink();
 requestAnimationFrame(tick);

@@ -34,3 +34,59 @@ html, body {
   font-size: 12px;
   opacity: 0.9;
 }
+
+/* Mobile-friendly controls */
+#controls {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 14px;
+  backdrop-filter: blur(8px);
+}
+
+#controls button {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.92);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#controls button:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 520px) {
+  #hud {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    max-width: none;
+  }
+  #hud .keys {
+    display: none; /* phones don't care about keybinds */
+  }
+  #controls {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    padding: 10px;
+  }
+  #controls button {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+}
