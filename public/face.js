@@ -24,7 +24,8 @@
 */
 
 const canvas = document.getElementById('face');
-const ctx = canvas.getContext('2d', { alpha: false });
+// alpha:true so CSS theme backgrounds (incl. Unicorn) can show through.
+const ctx = canvas.getContext('2d', { alpha: true });
 
 const DPR = () => Math.max(1, Math.floor(window.devicePixelRatio || 1));
 
@@ -48,6 +49,19 @@ const Themes = {
 };
 
 let theme = Themes.minimal;
+
+function getUiThemeMode() {
+  const t = document.documentElement.getAttribute('data-theme');
+  return t === 'dark' || t === 'light' || t === 'unicorn' ? t : 'dark';
+}
+
+function syncThemeFromDom() {
+  const mode = getUiThemeMode();
+  // Map UI theme to canvas theme.
+  // dark -> minimal, light -> kawaii, unicorn -> kawaii (but transparent bg so CSS shows)
+  theme = mode === 'dark' ? Themes.minimal : Themes.kawaii;
+  return mode;
+}
 let state = 'idle';
 
 // Layout
@@ -173,7 +187,12 @@ function setState(next) {
 }
 
 function toggleTheme() {
-  theme = theme.name === 'minimal' ? Themes.kawaii : Themes.minimal;
+  // Keep legacy controls compatible: cycle the UI theme (dark -> light -> unicorn).
+  const cur = getUiThemeMode();
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? 'unicorn' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('arena-theme', next); } catch (_) {}
+  syncThemeFromDom();
 }
 
 // Audio (optional)
@@ -191,7 +210,7 @@ function safePlay(a) {
   } catch (_) {}
 }
 
-function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness) {
+function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness, uiMode) {
   const mood = {
     surprised: state === 'surprised',
     angry: state === 'angry',
@@ -199,8 +218,10 @@ function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness
     lol: state === 'lol',
   };
 
-  ctx.fillStyle = theme.bg;
-  ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  if (uiMode !== 'unicorn') {
+    ctx.fillStyle = theme.bg;
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  }
 
   const eyeW = r * 0.28;
   const eyeHOpen = r * 0.28;
@@ -268,7 +289,7 @@ function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness
   }
 }
 
-function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness) {
+function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness, uiMode) {
   const mood = {
     surprised: state === 'surprised',
     angry: state === 'angry',
@@ -278,11 +299,14 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness)
 
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
-  const g = ctx.createLinearGradient(0, 0, w, h);
-  g.addColorStop(0, theme.bg);
-  g.addColorStop(1, '#fff2fb');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
+
+  if (uiMode !== 'unicorn') {
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, theme.bg);
+    g.addColorStop(1, '#fff2fb');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   ctx.fillStyle = theme.face;
   ctx.beginPath();
@@ -668,14 +692,20 @@ function tick() {
   const steerX = drift.x + look.x * layout.r * 0.06;
   const steerY = drift.y + look.y * layout.r * 0.03;
 
+  const uiMode = syncThemeFromDom();
+  if (uiMode === 'unicorn') {
+    // transparent background so CSS gradient + Unicorn layer show through
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  }
+
   if (theme.name === 'minimal') {
-    drawMinimalFace(layout, b, steerX, steerY + sleepiness * layout.r * 0.08, sleepiness);
+    drawMinimalFace(layout, b, steerX, steerY + sleepiness * layout.r * 0.08, sleepiness, uiMode);
     if (state === 'sleeping') {
       ctx.fillStyle = 'rgba(0,0,0,' + (0.10 * bgPulse).toFixed(3) + ')';
       ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     }
   } else {
-    drawKawaiiFace(layout, b, steerX, steerY + sleepiness * layout.r * 0.09, sleepiness);
+    drawKawaiiFace(layout, b, steerX, steerY + sleepiness * layout.r * 0.09, sleepiness, uiMode);
     if (state === 'sleeping') {
       ctx.fillStyle = 'rgba(255,110,170,' + (0.06 * bgPulse).toFixed(3) + ')';
       ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
