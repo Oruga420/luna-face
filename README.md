@@ -5,6 +5,10 @@ Next.js app for LunaFace:
 - Mood states + reactions
 - Optional Groq director via `/api/groq`
 
+## Docs
+
+- Modo Unicornio (Vibe Arena theme system notes): `docs/modo-unicornio.md`
+
 ## Dev
 
 ```bash
