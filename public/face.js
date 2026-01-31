@@ -197,8 +197,9 @@ function toggleTheme() {
 
 // Audio (optional)
 const audio = {
-  hey: new Audio('audio/hey-oruga.mp3'),
-  brotaSleep: new Audio('audio/brota-sleep.mp3'),
+  // Use absolute paths so it works the same on Vercel/prod.
+  hey: new Audio('/audio/hey-oruga.mp3'),
+  brotaSleep: new Audio('/audio/brota-sleep.mp3'),
 };
 audio.hey.preload = 'auto';
 audio.brotaSleep.preload = 'auto';
@@ -206,8 +207,13 @@ audio.brotaSleep.preload = 'auto';
 function safePlay(a) {
   try {
     a.currentTime = 0;
-    a.play();
-  } catch (_) {}
+    const p = a.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch((e) => console.warn('Audio play blocked/failed:', e));
+    }
+  } catch (e) {
+    console.warn('Audio play error:', e);
+  }
 }
 
 function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness, uiMode) {
