@@ -64,6 +64,11 @@ function syncThemeFromDom() {
 }
 let state = 'idle';
 
+// Random mood bursts
+let mood = {
+  nextAt: 0,
+};
+
 // Layout
 const layout = { cx: 0, cy: 0, r: 0 };
 
@@ -138,6 +143,11 @@ function scheduleBlink() {
   blink.nextAt = nowMs() + base + rand(0, jitter);
 }
 
+function scheduleMood() {
+  // Don't spam: every ~8-18s when idle-ish
+  mood.nextAt = nowMs() + rand(8000, 18000);
+}
+
 function startBlink() {
   blink.active = true;
   blink.start = nowMs();
@@ -177,6 +187,11 @@ function setState(next) {
     window.setTimeout(() => {
       if (state === 'blink') setState('idle');
     }, 160);
+  }
+
+  // schedule next random mood when we settle back
+  if (state === 'idle' || state === 'speaking' || state === 'happy') {
+    scheduleMood();
   }
 
   // auto-return for reactive moods
@@ -662,6 +677,17 @@ function tick() {
   if ((state === 'idle' || state === 'sleepy' || state === 'speaking' || state === 'happy') && !blink.active && t > blink.nextAt) {
     startBlink();
   }
+
+  // random expressions (idle-ish only)
+  if ((state === 'idle' || state === 'speaking' || state === 'happy') && t > mood.nextAt) {
+    const r = Math.random();
+    if (r < 0.55) setState('blink');
+    else if (r < 0.75) setState('happy');
+    else if (r < 0.88) setState('lol');
+    else if (r < 0.96) setState('surprised');
+    else setState('angry');
+    scheduleMood();
+  }
   const b = blinkAmount();
 
   // eye drift baseline
@@ -824,4 +850,5 @@ canvas.addEventListener('click', (e) => {
 
 resize();
 scheduleBlink();
+scheduleMood();
 requestAnimationFrame(tick);
