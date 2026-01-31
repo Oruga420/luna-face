@@ -64,6 +64,12 @@ function syncThemeFromDom() {
 }
 let state = 'idle';
 
+// Style modifiers (not states)
+let style = {
+  eye: 'neutral', // neutral | tareme | tsurime
+  ahoge: false,
+};
+
 // Random mood bursts
 let mood = {
   nextAt: 0,
@@ -264,8 +270,61 @@ function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness
   const y = cy - r * 0.05 + eyeShiftY;
 
   ctx.fillStyle = theme.eye;
-  ctx.fillRect(cx - gap - eyeW / 2 + eyeShiftX, y - eyeH / 2, eyeW, eyeH);
-  ctx.fillRect(cx + gap - eyeW / 2 + eyeShiftX, y - eyeH / 2, eyeW, eyeH);
+
+  // Eye vibe modifiers:
+  // - tareme: outer corners droop (puppy)
+  // - tsurime: outer corners lift (cat)
+  const leftX = cx - gap + eyeShiftX;
+  const rightX = cx + gap + eyeShiftX;
+  const baseY = y;
+  const edgeShift = r * 0.03;
+
+  function drawEyeRect(centerX, centerY, side /* -1 left, +1 right */) {
+    // side used to flip outer corner
+    const outer = side;
+    const inner = -side;
+
+    // corners: TL, TR, BR, BL
+    let tl = { x: -eyeW / 2, y: -eyeH / 2 };
+    let tr = { x: +eyeW / 2, y: -eyeH / 2 };
+    let br = { x: +eyeW / 2, y: +eyeH / 2 };
+    let bl = { x: -eyeW / 2, y: +eyeH / 2 };
+
+    if (style.eye === 'tareme') {
+      // outer corner down a bit
+      if (outer === -1) {
+        // left eye outer = left side
+        tl.y += edgeShift;
+        bl.y += edgeShift;
+      } else {
+        tr.y += edgeShift;
+        br.y += edgeShift;
+      }
+    } else if (style.eye === 'tsurime') {
+      // outer corner up a bit
+      if (outer === -1) {
+        tl.y -= edgeShift;
+        bl.y -= edgeShift;
+      } else {
+        tr.y -= edgeShift;
+        br.y -= edgeShift;
+      }
+    }
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.beginPath();
+    ctx.moveTo(tl.x, tl.y);
+    ctx.lineTo(tr.x, tr.y);
+    ctx.lineTo(br.x, br.y);
+    ctx.lineTo(bl.x, bl.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawEyeRect(leftX, baseY, -1);
+  drawEyeRect(rightX, baseY, +1);
 
   // eyebrows
   if (mood.angry || mood.surprised) {
@@ -284,6 +343,19 @@ function drawMinimalFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness
     ctx.beginPath();
     ctx.moveTo(cx + gap - browW / 2 + eyeShiftX, browY + tilt);
     ctx.lineTo(cx + gap + browW / 2 + eyeShiftX, browY - tilt);
+    ctx.stroke();
+  }
+
+  // ahoge (アホ毛) - little "idiot hair" strand
+  if (style.ahoge) {
+    const wiggle = Math.sin(nowMs() * 0.004) * r * 0.03;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = Math.max(2, r * 0.012);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.10, cy - r * 0.92);
+    ctx.quadraticCurveTo(cx + r * 0.22 + wiggle, cy - r * 1.10, cx + r * 0.04, cy - r * 1.22);
+    ctx.quadraticCurveTo(cx + r * 0.16 + wiggle, cy - r * 1.16, cx + r * 0.14, cy - r * 1.02);
     ctx.stroke();
   }
 
@@ -350,21 +422,30 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness,
 
   const eyelid = Math.min(1, blinkK + sleepiness * 0.55 + (mood.angry ? 0.12 : 0));
 
-  const drawEye = (x) => {
+  const drawEye = (x, side /* -1 left, +1 right */) => {
+    // Eye vibe modifiers on kawaii eyes (rotation gives tareme/tsurime feel)
+    let rot = 0;
+    if (style.eye === 'tareme') rot = 0.18 * side; // outer corners droop
+    if (style.eye === 'tsurime') rot = -0.18 * side; // outer corners lift
+
+    ctx.save();
+    ctx.translate(x + eyeShiftX, eyeY);
+    ctx.rotate(rot);
+
     ctx.fillStyle = theme.eye;
     ctx.beginPath();
-    ctx.ellipse(x + eyeShiftX, eyeY, eyeR, eyeR * (1 - eyelid * 0.85), 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, eyeR, eyeR * (1 - eyelid * 0.85), 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (eyelid < 0.9) {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.beginPath();
-      ctx.arc(x + eyeShiftX - eyeR * 0.25, eyeY - eyeR * 0.25, eyeR * 0.22, 0, Math.PI * 2);
+      ctx.arc(-eyeR * 0.25, -eyeR * 0.25, eyeR * 0.22, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = 'rgba(255,255,255,0.70)';
       ctx.beginPath();
-      ctx.arc(x + eyeShiftX + eyeR * 0.10, eyeY - eyeR * 0.38, eyeR * 0.10, 0, Math.PI * 2);
+      ctx.arc(eyeR * 0.10, -eyeR * 0.38, eyeR * 0.10, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -372,16 +453,18 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness,
       ctx.strokeStyle = 'rgba(20,20,20,0.75)';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(x - eyeR + eyeShiftX, eyeY);
-      ctx.lineTo(x + eyeR + eyeShiftX, eyeY);
+      ctx.moveTo(-eyeR, 0);
+      ctx.lineTo(eyeR, 0);
       ctx.stroke();
     }
+
+    ctx.restore();
   };
 
-  drawEye(cx - gap);
-  drawEye(cx + gap);
+  drawEye(cx - gap, -1);
+  drawEye(cx + gap, +1);
 
-  if (mood.angry || mood.surprised) {
+  if (mood.angry || mood.surprised || style.eye === 'tsurime') {
     ctx.strokeStyle = 'rgba(30,30,30,0.35)';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
@@ -410,6 +493,19 @@ function drawKawaiiFace({ cx, cy, r }, blinkK, eyeShiftX, eyeShiftY, sleepiness,
   ctx.beginPath();
   ctx.arc(cx + r * 0.58, cy + r * 0.18, blushR, 0, Math.PI * 2);
   ctx.fill();
+
+  // ahoge (アホ毛)
+  if (style.ahoge) {
+    const wiggle = Math.sin(nowMs() * 0.004) * r * 0.03;
+    ctx.strokeStyle = 'rgba(40,40,40,0.22)';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.06, cy - r * 0.98);
+    ctx.quadraticCurveTo(cx + r * 0.22 + wiggle, cy - r * 1.15, cx + r * 0.02, cy - r * 1.28);
+    ctx.quadraticCurveTo(cx + r * 0.16 + wiggle, cy - r * 1.20, cx + r * 0.14, cy - r * 1.04);
+    ctx.stroke();
+  }
 
   const mouthY = cy + r * 0.38;
   ctx.strokeStyle = theme.mouth;
@@ -781,6 +877,9 @@ function onKey(e) {
   if (k === 'a') setState('angry');
   if (k === 'h') setState('happy');
   if (k === 'l') setState('lol');
+  if (k === 't') style.eye = 'tareme';
+  if (k === 'r') style.eye = 'tsurime';
+  if (k === 'g') style.ahoge = !style.ahoge;
   if (k === 'p') safePlay(audio.hey);
   if (k === 'c') {
     if (cam.enabled) disableCamera();
@@ -838,6 +937,10 @@ canvas.addEventListener('click', (e) => {
       else enableCamera();
     }
     if (action === 'voice') safePlay(audio.hey);
+
+    if (action === 'tareme') style.eye = 'tareme';
+    if (action === 'tsurime') style.eye = 'tsurime';
+    if (action === 'ahoge') style.ahoge = !style.ahoge;
 
     if (action === 'idle') setState('idle');
     if (action === 'happy') setState('happy');
